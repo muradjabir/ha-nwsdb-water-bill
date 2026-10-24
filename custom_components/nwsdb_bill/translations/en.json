@@ -6,6 +6,7 @@
         "description": "Enter your NWSDB account number in the standard format (e.g. 22/28/206/006/17).",
         "data": {
           "account_number": "Account Number (Format: 22/28/206/006/17)",
+          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)",
           "cdp_host": "CDP Host (optional, default: 127.0.0.1)",
           "cdp_port": "CDP Port (optional, default: 9222)"
         }
@@ -18,6 +19,19 @@
     },
     "abort": {
       "already_configured": "This NWSDB account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NWSDB Integration Options",
+        "description": "Adjust the update polling frequency. To avoid overloading NWSDB servers, the minimum permitted interval is 12 hours.",
+        "data": {
+          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)",
+          "cdp_host": "CDP Host",
+          "cdp_port": "CDP Port"
+        }
+      }
     }
   },
   "entity": {

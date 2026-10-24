@@ -1,13 +1,23 @@
 """The NWSDB Water Bill integration."""
 from __future__ import annotations
 
+from datetime import timedelta
 import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, CONF_ACCOUNT_NUMBER, CONF_CDP_HOST, CONF_CDP_PORT, DEFAULT_CDP_HOST, DEFAULT_CDP_PORT
+from .const import (
+    DOMAIN,
+    CONF_ACCOUNT_NUMBER,
+    CONF_CDP_HOST,
+    CONF_CDP_PORT,
+    CONF_SCAN_INTERVAL_HOURS,
+    DEFAULT_CDP_HOST,
+    DEFAULT_CDP_PORT,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+)
 from .coordinator import NWSDBBillCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,17 +29,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     account_no = entry.data[CONF_ACCOUNT_NUMBER]
-    cdp_host = entry.data.get(CONF_CDP_HOST, DEFAULT_CDP_HOST)
-    cdp_port = entry.data.get(CONF_CDP_PORT, DEFAULT_CDP_PORT)
+    cdp_host = entry.options.get(CONF_CDP_HOST, entry.data.get(CONF_CDP_HOST, DEFAULT_CDP_HOST))
+    cdp_port = entry.options.get(CONF_CDP_PORT, entry.data.get(CONF_CDP_PORT, DEFAULT_CDP_PORT))
+    scan_interval = entry.options.get(
+        CONF_SCAN_INTERVAL_HOURS,
+        entry.data.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS),
+    )
 
-    coordinator = NWSDBBillCoordinator(hass, account_no, cdp_host, cdp_port)
+    coordinator = NWSDBBillCoordinator(hass, account_no, cdp_host, cdp_port, scan_interval)
 
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    coordinator: NWSDBBillCoordinator = hass.data[DOMAIN][entry.entry_id]
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS)
+    coordinator.update_interval = timedelta(hours=scan_interval)
+    coordinator.cdp_host = entry.options.get(CONF_CDP_HOST, coordinator.cdp_host)
+    coordinator.cdp_port = entry.options.get(CONF_CDP_PORT, coordinator.cdp_port)
+    _LOGGER.info("Updated NWSDB options (scan interval: %d hours)", scan_interval)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

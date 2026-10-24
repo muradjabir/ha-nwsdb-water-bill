@@ -7,11 +7,21 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN, CONF_ACCOUNT_NUMBER, CONF_CDP_HOST, CONF_CDP_PORT, DEFAULT_CDP_HOST, DEFAULT_CDP_PORT
+from .const import (
+    DOMAIN,
+    CONF_ACCOUNT_NUMBER,
+    CONF_CDP_HOST,
+    CONF_CDP_PORT,
+    CONF_SCAN_INTERVAL_HOURS,
+    DEFAULT_CDP_HOST,
+    DEFAULT_CDP_PORT,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+    MIN_SCAN_INTERVAL_HOURS,
+)
 from .coordinator import fetch_nwsdb_account_details
 
 
@@ -37,6 +47,12 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+        """Get options flow for this handler."""
+        return NWSDBOptionsFlowHandler(config_entry)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -61,6 +77,9 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_ACCOUNT_NUMBER): str,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL_HOURS, default=DEFAULT_SCAN_INTERVAL_HOURS
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_HOURS)),
                 vol.Optional(CONF_CDP_HOST, default=DEFAULT_CDP_HOST): str,
                 vol.Optional(CONF_CDP_PORT, default=DEFAULT_CDP_PORT): int,
             }
@@ -68,6 +87,48 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user", data_schema=schema, errors=errors
+        )
+
+
+class NWSDBOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options for NWSDB integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current_interval = self.config_entry.options.get(
+            CONF_SCAN_INTERVAL_HOURS,
+            self.config_entry.data.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS),
+        )
+        current_host = self.config_entry.options.get(
+            CONF_CDP_HOST,
+            self.config_entry.data.get(CONF_CDP_HOST, DEFAULT_CDP_HOST),
+        )
+        current_port = self.config_entry.options.get(
+            CONF_CDP_PORT,
+            self.config_entry.data.get(CONF_CDP_PORT, DEFAULT_CDP_PORT),
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_SCAN_INTERVAL_HOURS,
+                        default=current_interval,
+                    ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_HOURS)),
+                    vol.Optional(CONF_CDP_HOST, default=current_host): str,
+                    vol.Optional(CONF_CDP_PORT, default=current_port): int,
+                }
+            ),
         )
 
 
