@@ -1,0 +1,10 @@
+{
+  "domain": "nwsdb_bill",
+  "name": "NWSDB Water Bill (Sri Lanka)",
+  "codeowners": ["@muradjabir"],
+  "config_flow": true,
+  "documentation": "https://github.com/muradjabir/ha-nwsdb-water-bill",
+  "issue_tracker": "https://github.com/muradjabir/ha-nwsdb-water-bill/issues",
+  "iot_class": "cloud_polling",
+  "version": "1.0.0"
+}

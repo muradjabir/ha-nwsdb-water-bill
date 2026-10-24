@@ -1,0 +1,79 @@
+"""Config flow for NWSDB Water Bill integration."""
+from __future__ import annotations
+
+import re
+from typing import Any
+
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
+
+from .const import DOMAIN, CONF_ACCOUNT_NUMBER, CONF_CDP_HOST, CONF_CDP_PORT, DEFAULT_CDP_HOST, DEFAULT_CDP_PORT
+from .coordinator import fetch_nwsdb_account_details
+
+
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+    """Validate user input."""
+    account_no = data[CONF_ACCOUNT_NUMBER].strip()
+    if not re.match(r"^\d{2}/\d{2}/\d{3}/\d{3}/\d{2}$", account_no):
+        raise InvalidAccountNumber
+
+    details = await hass.async_add_executor_job(fetch_nwsdb_account_details, account_no)
+    if not details:
+        raise CannotConnect
+
+    title = f"NWSDB {account_no}"
+    if details.get("customer_name"):
+        title = f"Water ({details['customer_name']})"
+
+    return {"title": title, "data": details}
+
+
+class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for NWSDB Water Bill."""
+
+    VERSION = 1
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            account_no = user_input[CONF_ACCOUNT_NUMBER].strip()
+            await self.async_set_unique_id(account_no)
+            self._abort_if_unique_id_configured()
+
+            try:
+                info = await validate_input(self.hass, user_input)
+                return self.async_create_entry(title=info["title"], data=user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAccountNumber:
+                errors[CONF_ACCOUNT_NUMBER] = "invalid_account_number"
+            except Exception:  # pylint: disable=broad-except
+                errors["base"] = "unknown"
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_ACCOUNT_NUMBER): str,
+                vol.Optional(CONF_CDP_HOST, default=DEFAULT_CDP_HOST): str,
+                vol.Optional(CONF_CDP_PORT, default=DEFAULT_CDP_PORT): int,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user", data_schema=schema, errors=errors
+        )
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAccountNumber(HomeAssistantError):
+    """Error to indicate account number is invalid."""

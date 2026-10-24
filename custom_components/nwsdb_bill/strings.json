@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "National Water Supply & Drainage Board (NWSDB)",
+        "description": "Enter your NWSDB account number in the standard format (e.g. 22/28/206/006/17).",
+        "data": {
+          "account_number": "Account Number (Format: 22/28/206/006/17)",
+          "cdp_host": "CDP Host (optional, default: 127.0.0.1)",
+          "cdp_port": "CDP Port (optional, default: 9222)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to verify account with NWSDB API. Please ensure the account number is correct.",
+      "invalid_account_number": "Invalid account number format. Expected format: 00/00/000/000/00.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This NWSDB account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_balance": {
+        "name": "Water Bill Balance"
+      }
+    }
+  }
+}
