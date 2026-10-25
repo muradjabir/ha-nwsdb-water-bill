@@ -51,7 +51,7 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
         """Get options flow for this handler."""
-        return NWSDBOptionsFlowHandler(config_entry)
+        return NWSDBOptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -92,10 +92,6 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class NWSDBOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options for NWSDB integration."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
