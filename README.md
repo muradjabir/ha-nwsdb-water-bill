@@ -11,16 +11,22 @@ Track your **National Water Supply & Drainage Board (NWSDB)** water bill balance
 ## Features
 
 - **Automated Tracking:** Fetches current outstanding balance and account status daily.
+- **Pure Cloud Polling:** Directly queries official NWSDB services without requiring any external browser or CDP setup.
 - **Config Flow Setup:** Easy UI configuration directly in Home Assistant (Settings -> Devices & Services -> Add Integration).
+- **Entities Provided per Account:**
+  - `sensor.water_bill_balance`: Current bill balance in `LKR` (`monetary` device class).
+  - `sensor.connection_status`: Live connection status (`Active`, `Notice 2 Sent`, `Disconnected`, etc.).
 - **Rich Account Information:**
   - `account_number`: Your 14-character NWSDB account format (`00/00/000/000/00`)
   - `customer_name`: Consumer name registered with NWSDB
+  - `address`: Registered postal address
   - `meter_number`: Water meter serial number
   - `area`: Supply region & service area
   - `category`: Connection category (e.g. Domestic, Commercial)
-  - `status`: Connection status (Active, Notice, etc.)
-  - `unit_of_measurement`: `LKR`
-  - `device_class`: `monetary`
+  - `status`: Connection status (Active, Disconnected, etc.)
+  - `account_status`: Account notice status (e.g. Notice 2 Sent)
+  - `is_credit`: Boolean indicating if account has a credit balance
+  - `raw_amount`: Original unformatted amount string from portal (e.g. `99.49CR`)
 
 ---
 

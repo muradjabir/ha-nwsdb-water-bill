@@ -3,18 +3,16 @@
     "step": {
       "user": {
         "title": "National Water Supply & Drainage Board (NWSDB)",
-        "description": "Enter your NWSDB account number in the standard format (e.g. 22/28/206/006/17).",
+        "description": "Enter your NWSDB account number in the standard format (e.g. 22/28/206/006/17 or 12 digits).",
         "data": {
-          "account_number": "Account Number (Format: 22/28/206/006/17)",
-          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)",
-          "cdp_host": "CDP Host (optional, default: 127.0.0.1)",
-          "cdp_port": "CDP Port (optional, default: 9222)"
+          "account_number": "Account Number (e.g. 22/28/206/006/17)",
+          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to verify account with NWSDB API. Please ensure the account number is correct.",
-      "invalid_account_number": "Invalid account number format. Expected format: 00/00/000/000/00.",
+      "cannot_connect": "Failed to connect to NWSDB portal. Please check the account number and try again.",
+      "invalid_account_number": "Invalid account number format. Expected format: 00/00/000/000/00 or 12 digits.",
       "unknown": "Unexpected error occurred."
     },
     "abort": {
@@ -27,9 +25,7 @@
         "title": "NWSDB Integration Options",
         "description": "Adjust the update polling frequency. To avoid overloading NWSDB servers, the minimum permitted interval is 12 hours.",
         "data": {
-          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)",
-          "cdp_host": "CDP Host",
-          "cdp_port": "CDP Port"
+          "scan_interval_hours": "Update Interval in Hours (minimum 12 hours)"
         }
       }
     }
@@ -38,6 +34,9 @@
     "sensor": {
       "water_balance": {
         "name": "Water Bill Balance"
+      },
+      "connection_status": {
+        "name": "Connection Status"
       }
     }
   }

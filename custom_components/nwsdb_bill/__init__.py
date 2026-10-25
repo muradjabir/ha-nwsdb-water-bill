@@ -11,11 +11,7 @@ from homeassistant.core import HomeAssistant
 from .const import (
     DOMAIN,
     CONF_ACCOUNT_NUMBER,
-    CONF_CDP_HOST,
-    CONF_CDP_PORT,
     CONF_SCAN_INTERVAL_HOURS,
-    DEFAULT_CDP_HOST,
-    DEFAULT_CDP_PORT,
     DEFAULT_SCAN_INTERVAL_HOURS,
 )
 from .coordinator import NWSDBBillCoordinator
@@ -29,14 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     account_no = entry.data[CONF_ACCOUNT_NUMBER]
-    cdp_host = entry.options.get(CONF_CDP_HOST, entry.data.get(CONF_CDP_HOST, DEFAULT_CDP_HOST))
-    cdp_port = entry.options.get(CONF_CDP_PORT, entry.data.get(CONF_CDP_PORT, DEFAULT_CDP_PORT))
     scan_interval = entry.options.get(
         CONF_SCAN_INTERVAL_HOURS,
         entry.data.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS),
     )
 
-    coordinator = NWSDBBillCoordinator(hass, account_no, cdp_host, cdp_port, scan_interval)
+    coordinator = NWSDBBillCoordinator(hass, account_no, scan_interval)
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -51,11 +45,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update."""
     coordinator: NWSDBBillCoordinator = hass.data[DOMAIN][entry.entry_id]
-    scan_interval = entry.options.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS)
+    scan_interval = entry.options.get(
+        CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS
+    )
     coordinator.update_interval = timedelta(hours=scan_interval)
-    coordinator.cdp_host = entry.options.get(CONF_CDP_HOST, coordinator.cdp_host)
-    coordinator.cdp_port = entry.options.get(CONF_CDP_PORT, coordinator.cdp_port)
-    _LOGGER.info("Updated NWSDB options (scan interval: %d hours)", scan_interval)
+    _LOGGER.info(
+        "Updated NWSDB options for %s (scan interval: %d hours)",
+        coordinator.account_number,
+        scan_interval,
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -14,32 +14,50 @@ from homeassistant.exceptions import HomeAssistantError
 from .const import (
     DOMAIN,
     CONF_ACCOUNT_NUMBER,
-    CONF_CDP_HOST,
-    CONF_CDP_PORT,
     CONF_SCAN_INTERVAL_HOURS,
-    DEFAULT_CDP_HOST,
-    DEFAULT_CDP_PORT,
     DEFAULT_SCAN_INTERVAL_HOURS,
     MIN_SCAN_INTERVAL_HOURS,
 )
-from .coordinator import fetch_nwsdb_account_details
+from .coordinator import (
+    fetch_nwsdb_account_details,
+    fetch_nwsdb_portal_sync,
+    format_nwsdb_account,
+)
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate user input."""
-    account_no = data[CONF_ACCOUNT_NUMBER].strip()
+    """Validate user input by verifying account number format and reaching NWSDB."""
+    raw_account = data[CONF_ACCOUNT_NUMBER].strip()
+    account_no = format_nwsdb_account(raw_account)
+
     if not re.match(r"^\d{2}/\d{2}/\d{3}/\d{3}/\d{2}$", account_no):
         raise InvalidAccountNumber
 
-    details = await hass.async_add_executor_job(fetch_nwsdb_account_details, account_no)
+    # Attempt to query account via portal or REST API
+    details: dict[str, Any] = {}
+    try:
+        details = await hass.async_add_executor_job(
+            fetch_nwsdb_account_details, account_no
+        )
+    except Exception:
+        pass
+
+    # If REST API didn't return metadata, verify directly with portal
     if not details:
-        raise CannotConnect
+        try:
+            portal_info = await hass.async_add_executor_job(
+                fetch_nwsdb_portal_sync, account_no
+            )
+            if portal_info:
+                details = portal_info
+        except Exception as err:
+            raise CannotConnect from err
 
     title = f"NWSDB {account_no}"
     if details.get("customer_name"):
         title = f"Water ({details['customer_name']})"
 
-    return {"title": title, "data": details}
+    return {"title": title, "account_number": account_no}
 
 
 class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -49,7 +67,9 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
         """Get options flow for this handler."""
         return NWSDBOptionsFlowHandler()
 
@@ -60,12 +80,15 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            account_no = user_input[CONF_ACCOUNT_NUMBER].strip()
-            await self.async_set_unique_id(account_no)
+            raw_account = user_input[CONF_ACCOUNT_NUMBER].strip()
+            formatted_acc = format_nwsdb_account(raw_account)
+            await self.async_set_unique_id(formatted_acc)
             self._abort_if_unique_id_configured()
 
             try:
                 info = await validate_input(self.hass, user_input)
+                # Store normalized account number
+                user_input[CONF_ACCOUNT_NUMBER] = formatted_acc
                 return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
@@ -80,8 +103,6 @@ class NWSDBConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_SCAN_INTERVAL_HOURS, default=DEFAULT_SCAN_INTERVAL_HOURS
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_HOURS)),
-                vol.Optional(CONF_CDP_HOST, default=DEFAULT_CDP_HOST): str,
-                vol.Optional(CONF_CDP_PORT, default=DEFAULT_CDP_PORT): int,
             }
         )
 
@@ -102,15 +123,9 @@ class NWSDBOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL_HOURS,
-            self.config_entry.data.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS),
-        )
-        current_host = self.config_entry.options.get(
-            CONF_CDP_HOST,
-            self.config_entry.data.get(CONF_CDP_HOST, DEFAULT_CDP_HOST),
-        )
-        current_port = self.config_entry.options.get(
-            CONF_CDP_PORT,
-            self.config_entry.data.get(CONF_CDP_PORT, DEFAULT_CDP_PORT),
+            self.config_entry.data.get(
+                CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS
+            ),
         )
 
         return self.async_show_form(
@@ -120,9 +135,9 @@ class NWSDBOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_SCAN_INTERVAL_HOURS,
                         default=current_interval,
-                    ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_HOURS)),
-                    vol.Optional(CONF_CDP_HOST, default=current_host): str,
-                    vol.Optional(CONF_CDP_PORT, default=current_port): int,
+                    ): vol.All(
+                        vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_HOURS)
+                    ),
                 }
             ),
         )
