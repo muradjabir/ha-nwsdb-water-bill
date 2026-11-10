@@ -44,6 +44,13 @@ class NWSDBBillSensor(CoordinatorEntity[NWSDBBillCoordinator], SensorEntity):
     _attr_state_class = SensorStateClass.TOTAL
     _attr_native_unit_of_measurement = "LKR"
     _attr_icon = "mdi:water-pump"
+    _unrecorded_attributes = frozenset(
+        {
+            "customer_name",
+            "address",
+            "meter_number",
+        }
+    )
 
     def __init__(
         self,
@@ -151,10 +158,7 @@ class NWSDBConnectionStatusSensor(
             "account_number": self._account_number,
             "connection_status": self.coordinator.data.get("status"),
             "account_status": self.coordinator.data.get("account_status"),
-            "customer_name": self.coordinator.data.get("customer_name"),
-            "meter_number": self.coordinator.data.get("meter_no"),
             "area": self.coordinator.data.get("area"),
             "category": self.coordinator.data.get("category"),
-            "address": self.coordinator.data.get("address"),
             "last_synced": self.coordinator.data.get("last_synced"),
         }
